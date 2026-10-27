@@ -1,0 +1,10 @@
+{
+  "_comment": "ETDRS 2000-series charts (Good-Lite), 4 m testing distance. Lines top to bottom, logMAR 1.0 to -0.3 in 0.1 steps. Transcribed from docs/chart_photos; bottom lines should be verified against the physical charts.",
+  "distance_m": 4,
+  "line_logmar": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, -0.1, -0.2, -0.3],
+  "forms": {
+    "1": ["COHZV", "SZNDC", "VKCNR", "KCRHN", "ZKDVC", "HVORK", "RHSON", "KSVRH", "HNKCD", "NDVKO", "DHOSZ", "VRNDO", "CZHKS", "ORZSK"],
+    "2": ["ZRKDC", "DNCHV", "CDHNR", "RVZOS", "OSDVZ", "NOZCD", "RDNSK", "OKSVZ", "KSNHO", "HOVSN", "VCSZH", "CZDRV", "SHRZC", "DNOKR"],
+    "3": ["RNOVS", "ZCRDH", "NVSOK", "DRZKO", "SNHCV", "CRVSZ", "VKCNH", "SVKDN", "KDHZC", "HZCOR", "OKDHN", "ZONKC", "RHSVD", "DSORZ"]
+  }
+}
