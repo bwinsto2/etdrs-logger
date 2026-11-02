@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # Standard ETDRS stop rule: stop once a completed line has this many errors.
 STOP_RULE_ERRORS = 3
@@ -41,7 +41,7 @@ RESULT_NOT_READ = "not_read"
 
 SUMMARY_COLUMNS = [
     "subject_id", "session", "eye_tested", "amblyopic_eye", "eye_role",
-    "test_order", "form", "letters_correct", "letters_total", "logmar",
+    "test_order", "retest", "form", "letters_correct", "letters_total", "logmar",
     "stopped_at_line", "stop_reason", "ra_initials", "notes", "timestamp",
     "app_version",
 ]
@@ -147,6 +147,13 @@ class ChartTest:
         if not self.is_over:
             self.ended_early = True
 
+    def resume(self) -> bool:
+        """Take back "End test early" so testing carries on where it stopped."""
+        if not self.ended_early:
+            return False
+        self.ended_early = False
+        return True
+
     # --- derived state -------------------------------------------------
 
     def line_marks(self, line: int) -> List[Optional[bool]]:
@@ -233,6 +240,7 @@ class EyeResult:
     ra_initials: str
     notes: str = ""
     timestamp: str = ""
+    retest: bool = False  # set on save: True if it replaced an earlier test of this eye
 
     @property
     def eye_role(self) -> str:
@@ -248,6 +256,7 @@ class EyeResult:
             "amblyopic_eye": self.amblyopic_eye,
             "eye_role": self.eye_role,
             "test_order": str(self.test_order),
+            "retest": "yes" if self.retest else "no",
             "form": self.form,
             "letters_correct": str(t.letters_correct),
             "letters_total": str(TOTAL_LETTERS),
@@ -391,6 +400,7 @@ def save_eye_result(folder: str, result: EyeResult, overwrite: bool = False) -> 
 
     check_form_allowed(result.form, eye, folder, result.subject_id, result.session)
 
+    result.retest = already
     if not result.timestamp:
         result.timestamp = now_iso()
     summary = [r for r in summary if r.get("eye_tested") != eye] + [result.summary_row()]

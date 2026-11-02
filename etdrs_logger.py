@@ -341,7 +341,7 @@ class ChartScreen(tk.Frame):
                       "     = change it (blank → green → red)").pack(anchor="w")
 
         self.end_btn = tk.Button(panel, text="End test early…", font=FONT_SMALL,
-                                 command=self.end_early, state="disabled")
+                                 command=self.end_or_resume, state="disabled")
         self.end_btn.pack(anchor="w", pady=(10, 10))
 
         tk.Label(panel, text="Notes", font=FONT_BOLD, bg="#f5f5f5").pack(anchor="w")
@@ -429,7 +429,10 @@ class ChartScreen(tk.Frame):
                                fg="#000")
             self.notes.config(state="normal", bg="white")
             self.submit_btn.config(state="normal")
-            self.end_btn.config(state="disabled")
+            if t.stop_reason == core.ENDED_EARLY:
+                self.end_btn.config(text="Resume test", state="normal")
+            else:
+                self.end_btn.config(text="End test early…", state="disabled")
         else:
             self.banner.config(text="", bg=BG)
             self.submit_btn.config(state="disabled")
@@ -437,7 +440,7 @@ class ChartScreen(tk.Frame):
             if self.started:
                 line = t.cursor // core.LETTERS_PER_LINE + 1
                 self.status.config(text=f"Testing line {line} of 14", fg=CURSOR_COLOR)
-                self.end_btn.config(state="normal")
+                self.end_btn.config(text="End test early…", state="normal")
 
     def refresh(self) -> None:
         self.redraw()
@@ -496,7 +499,12 @@ class ChartScreen(tk.Frame):
                 break
         return "break"
 
-    def end_early(self) -> None:
+    def end_or_resume(self) -> None:
+        if self.test.ended_early:
+            self.test.resume()
+            self.canvas.focus_set()  # so y/h grade letters again, not type into notes
+            self.refresh()
+            return
         if messagebox.askyesno("End test early?",
                                "End the test for this eye now?\n\n"
                                "Letters not yet read will count as wrong.", parent=self):

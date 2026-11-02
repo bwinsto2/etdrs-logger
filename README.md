@@ -113,7 +113,10 @@ The panel on the right shows letters correct and the current logMAR as you go.
   and y/h stop working. (If the stop came from a mistyped key, press
   **delete** to undo it, or right-click the letter to fix it.)
 - If the participant reads all 14 lines, the test ends by itself.
-- To stop early for any other reason, click **End test early…**.
+- To stop early for any other reason, click **End test early…**. If you change
+  your mind (for example, the participant only needed a short break), click
+  **Resume test** and carry on from the same letter. You can resume any time
+  before you press Submit.
 
 Letters that were never read count as wrong.
 
@@ -125,7 +128,8 @@ saved straight away, and you go on to the fellow eye. After the second eye, a
 summary of both eyes is shown; click **Next participant** to start again.
 
 If that eye is already saved for this subject and session (for example, you are
-re-testing), the app asks before replacing it. Only that eye's data is replaced.
+re-testing), the app asks before replacing it. Only that eye's data is replaced,
+and the new row is marked `retest = yes` in the summary file.
 If the app was closed between eyes, enter the same subject and session again and
 it will offer to skip straight to the fellow eye.
 
@@ -133,9 +137,12 @@ it will offer to skip straight to the fellow eye.
 
 ## 3. Where the data goes
 
-The default data folder is **Documents → ETDRS data** (you can choose another one
-on the setup screen). Each subject + session gets two files, which open in
-Excel, Numbers, R, SPSS, etc.:
+The default data folder is **Documents → ETDRS data**. To save somewhere else
+(for example a shared or synced lab folder), click **Choose…** next to
+"Data folder" on the setup screen. The app remembers the folder you chose and
+uses it every time until you choose a different one.
+
+Each subject + session gets two files, which open in Excel, Numbers, R, SPSS, etc.:
 
 ### `<subject>_session<session>_summary.csv` — one row per eye
 
@@ -147,6 +154,7 @@ Excel, Numbers, R, SPSS, etc.:
 | amblyopic_eye | L or R |
 | eye_role | amblyopic or fellow |
 | test_order | 1 (amblyopic eye) or 2 (fellow eye) |
+| retest | `yes` if this test replaced an earlier saved test of the same eye in this session, otherwise `no` (blank in files saved before version 1.1.0) |
 | form | Chart form used: 1, 2 or 3 |
 | letters_correct | Number of letters read correctly (0–70) |
 | letters_total | Always 70 |
