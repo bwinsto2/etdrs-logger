@@ -29,30 +29,40 @@ It runs on your Mac, works offline, and never sends data anywhere.
    A folder called `etdrs-logger-main` appears.
 4. Move that folder somewhere easy to find, for example your **Documents** folder.
 
-### First launch
+### Make the app icon (once)
 
 1. Open the `etdrs-logger-main` folder.
-2. Double-click **`Start ETDRS Logger.command`**.
-3. The first time, macOS may say it "cannot be opened because it is from an
-   unidentified developer" or "could not verify" it. If so:
+2. Double-click **`Make ETDRS Logger App.command`**.
+3. macOS may say it "cannot be opened because it is from an unidentified
+   developer" or "could not verify" it. If so:
    - **Right-click** (or Control-click) the file and choose **Open**, then click
      **Open** again; **or**
    - open **System Settings → Privacy & Security**, scroll down, and click
-     **Open Anyway** next to the message about `Start ETDRS Logger.command`.
+     **Open Anyway** next to the message about `Make ETDRS Logger App.command`.
+4. A Terminal window opens and creates **ETDRS Logger** (an eye-chart icon) in
+   your **Applications** folder (the one in your home folder). A Finder window
+   then shows the new app. Press Return to close the Terminal window.
+5. **Drag the ETDRS Logger icon onto the Dock** to keep it there. To put it on the
+   Desktop as well, hold **Option + Command** while you drag it onto the Desktop.
 
-   You only need to do this once.
-4. A Terminal window opens (leave it open; it closes the app if you quit it),
-   and then the ETDRS Logger window appears.
+From now on, start the app by clicking the ETDRS Logger icon. No Terminal
+window opens.
 
-**If double-clicking doesn't work**, start it by hand: open the **Terminal** app
-(Applications → Utilities → Terminal), type `cd ` (with a space), drag the
-`etdrs-logger-main` folder onto the Terminal window, press Return, then type:
+**Keep the `etdrs-logger-main` folder where it is.** The icon starts the app
+from that folder. If you move the folder, or download a new copy to a different
+place, double-click `Make ETDRS Logger App.command` in the new folder again. The
+old icon in the Dock will keep working once you do (if it shows a question mark,
+drag it off the Dock and drag the new one on).
 
-```
-python3 etdrs_logger.py
-```
+### Other ways to start it
 
-and press Return.
+- Double-click **`Start ETDRS Logger.command`** in the folder. This opens a
+  Terminal window as well as the app; leave the Terminal window open while you
+  use the app. The first time, macOS may block it; see step 3 above.
+- **If neither works**, start it by hand: open the **Terminal** app
+  (Applications → Utilities → Terminal), type `cd ` (with a space), drag the
+  `etdrs-logger-main` folder onto the Terminal window, press Return, then type
+  `python3 etdrs_logger.py` and press Return.
 
 ---
 
@@ -167,8 +177,11 @@ is kept as typed).
 
 ## 4. Updating the app
 
-Download the ZIP again (step 1, "Download the app") and replace the old folder.
-Your data is not stored in the app folder, so nothing is lost.
+Download the ZIP again (step 1, "Download the app") and replace the old folder,
+keeping the same name and place. The Dock icon then starts the new version.
+(If the folder ends up with a different name or place, double-click
+`Make ETDRS Logger App.command` in it again.) Your data is not stored in the app
+folder, so nothing is lost.
 
 ---
 
@@ -180,6 +193,11 @@ Your data is not stored in the app folder, so nothing is lost.
 - `charts.json` — the letters of the three forms (verified against the physical charts).
 - `test_etdrs_core.py` — unit tests: `python3 -m unittest`
 - `docs/chart_photos/` — photos of the physical charts.
+- `assets/` — the app icon (`ETDRSLogger.icns` for the Mac app, `icon_256.png` for the window).
+- `Make ETDRS Logger App.command` — builds `~/Applications/ETDRS Logger.app`, a small
+  app bundle that runs `etdrs_logger.py` from this folder. It is built on the RA's
+  Mac rather than shipped in the ZIP, so macOS doesn't quarantine it or run it
+  from a temporary copy.
 - The last-used data folder is stored in `~/.etdrs_logger.json`.
 
 See `SPEC.md` for the full specification.

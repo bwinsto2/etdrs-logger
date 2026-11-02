@@ -22,6 +22,7 @@ import etdrs_core as core
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHARTS_PATH = os.path.join(HERE, "charts.json")
+ICON_PATH = os.path.join(HERE, "assets", "icon_256.png")
 
 FAMILY = "Helvetica"
 FONT = (FAMILY, 18)
@@ -57,6 +58,12 @@ class App(tk.Tk):
         super().__init__()
         self.title("ETDRS Logger")
         self.configure(bg=BG)
+        try:
+            # Window icon; on a Mac this also replaces the Python rocket in the Dock.
+            self.icon = tk.PhotoImage(file=ICON_PATH)
+            self.iconphoto(True, self.icon)
+        except tk.TclError:
+            pass
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         w, h = min(1300, sw - 40), min(860, sh - 80)
         self.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+10")
