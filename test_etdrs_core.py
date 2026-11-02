@@ -175,6 +175,24 @@ class UndoTest(unittest.TestCase):
         self.assertFalse(t.mark(True))
         self.assertFalse(t.undo())
 
+    def test_resume_after_end_early(self):
+        t = new_test()
+        enter(t, "yyyyy" "yy")
+        t.end_early()
+        self.assertTrue(t.resume())
+        self.assertFalse(t.is_over)
+        self.assertIsNone(t.stop_reason)
+        self.assertTrue(t.mark(True))  # carries on at line 2, letter 3
+        self.assertEqual(t.cursor, 8)
+        self.assertTrue(t.undo())
+
+    def test_resume_only_undoes_end_early(self):
+        t = new_test()
+        self.assertFalse(t.resume())  # never ended
+        enter(t, "hhhhh")
+        self.assertFalse(t.resume())  # stop rule is not something to resume from
+        self.assertTrue(t.stop_rule_met)
+
 
 class CsvTestBase(unittest.TestCase):
     def setUp(self):
@@ -209,6 +227,7 @@ class CsvOutputTest(CsvTestBase):
         self.assertEqual(row["eye_tested"], "L")
         self.assertEqual(row["eye_role"], "amblyopic")
         self.assertEqual(row["test_order"], "1")
+        self.assertEqual(row["retest"], "no")
         self.assertEqual(row["form"], "2")
         self.assertEqual(row["letters_correct"], "7")
         self.assertEqual(row["letters_total"], "70")
@@ -267,7 +286,9 @@ class OverwriteAppendTest(CsvTestBase):
         by_eye = {r["eye_tested"]: r for r in summary}
         self.assertEqual(by_eye["L"]["form"], "3")
         self.assertEqual(by_eye["L"]["letters_correct"], "5")
+        self.assertEqual(by_eye["L"]["retest"], "yes")
         self.assertEqual(by_eye["R"]["letters_correct"], "70")
+        self.assertEqual(by_eye["R"]["retest"], "no")
         letters = self.read("letters")
         self.assertEqual(len(letters), 140)
         self.assertEqual({r["form"] for r in letters if r["eye_tested"] == "L"}, {"3"})
