@@ -13,6 +13,38 @@ if [ ! -f "$REPO/etdrs_logger.py" ] || [ ! -f "$REPO/assets/ETDRSLogger.icns" ];
   exit 1
 fi
 
+# Find the Python 3 to start the app with. Try the python3 this Terminal uses
+# first: it may be Anaconda, pyenv or Homebrew rather than the python.org one.
+find_python() {
+  local c
+  for c in "$(command -v python3 2>/dev/null)" \
+      /Library/Frameworks/Python.framework/Versions/Current/bin/python3 \
+      /usr/local/bin/python3 \
+      /opt/homebrew/bin/python3 \
+      /usr/bin/python3; do
+    [ -n "$c" ] && [ -x "$c" ] || continue
+    # Apple's /usr/bin/python3 only works if the developer tools are installed;
+    # otherwise running it pops up an "install developer tools" dialog.
+    if [ "$c" = /usr/bin/python3 ] && ! xcode-select -p >/dev/null 2>&1; then
+      continue
+    fi
+    if "$c" -c "import tkinter" >/dev/null 2>&1; then
+      "$c" -c "import sys; print(sys.executable)"
+      return 0
+    fi
+  done
+  return 1
+}
+
+PY="$(find_python)"
+if [ -z "$PY" ]; then
+  echo "Could not find Python 3 with tkinter."
+  echo "Install Python 3 from https://www.python.org/downloads/ and run this again."
+  read -r -p "Press Return to close this window."
+  exit 1
+fi
+echo "Using Python: $PY"
+
 APP_DIR="$HOME/Applications"
 APP="$APP_DIR/ETDRS Logger.app"
 mkdir -p "$APP_DIR" || exit 1
@@ -47,7 +79,7 @@ EOF
 
 # The app's program: a small script that starts etdrs_logger.py from this folder.
 LAUNCHER="$APP/Contents/MacOS/ETDRS Logger"
-printf '#!/bin/bash\nREPO=%q\n' "$REPO" > "$LAUNCHER"
+printf '#!/bin/bash\nREPO=%q\nPY_AT_SETUP=%q\n' "$REPO" "$PY" > "$LAUNCHER"
 cat >> "$LAUNCHER" <<'EOF'
 LOG="$HOME/Library/Logs/ETDRS Logger.log"
 
@@ -60,8 +92,11 @@ if [ ! -f "$REPO/etdrs_logger.py" ]; then
   exit 1
 fi
 
+# Use the Python found when the app was made; fall back to the usual places
+# in case that one has since been removed or upgraded.
 PY=""
 for candidate in \
+    "$PY_AT_SETUP" \
     /Library/Frameworks/Python.framework/Versions/Current/bin/python3 \
     /usr/local/bin/python3 \
     /opt/homebrew/bin/python3; do
@@ -71,7 +106,7 @@ for candidate in \
   fi
 done
 if [ -z "$PY" ]; then
-  alert "Python 3 is not installed. Install it from python.org, then try again."
+  alert "Could not find Python 3. Open the etdrs-logger folder and double-click \"Make ETDRS Logger App.command\" again. If that also fails, install Python 3 from python.org."
   exit 1
 fi
 
