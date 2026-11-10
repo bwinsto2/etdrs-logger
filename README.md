@@ -75,21 +75,59 @@ Fill in every field:
 | Field | What to enter |
 |---|---|
 | Subject ID | The participant's study ID |
-| Visit / session | The visit or session number |
+| Visit | Pick the visit from the list: prep1a, S2 prep, 2-weeks S2, 4-weeks S2 or 8-weeks S2 |
 | Amblyopic eye | **L** or **R** |
 | RA initials | Your initials |
 | Data folder | Where the CSV files are saved. Click **Choose…** to change it. The app remembers your choice next time. |
 
-Click **Start testing**. The amblyopic eye is always tested first, then the
-fellow eye. The coloured bar at the top always shows which eye you are testing
+Click **Start testing**. **The first time you enter a new Subject ID**, the app
+asks whether this is a new participant. Click **Yes** to create their form
+schedule (see below). If the participant is *not* new, click **No** and check the
+spelling of the Subject ID and that the data folder is the right one.
+
+The amblyopic eye is always tested first, then the fellow eye. The coloured bar at the top always shows which eye you are testing
 (for example **Testing: LEFT eye (amblyopic)**).
 
 ### Choose the form
 
-Click the button for the chart you are using (Form 1, 2 or 3). Each button
-shows the chart's top line so you can match it to the physical chart.
-**The same form cannot be used for both eyes in one session** — the form already
-used for the first eye is greyed out for the second eye.
+The screen says which form the schedule wants for this visit and eye
+(**Scheduled for this visit: Form 2**), and marks that button **★ scheduled**.
+The participant's full schedule for every visit is shown on the right.
+Get that physical chart, check its top line matches the button, and click it.
+
+If you really have to use a different form (e.g. that chart is unavailable),
+click it anyway: the app asks you to confirm, and the summary file records both
+the form used and the scheduled one. **The same form can never be used for both
+eyes at one visit**: the form already used for the first eye is greyed out for
+the second eye.
+
+#### How forms are scheduled (counterbalancing)
+
+Each participant does 5 visits × 2 eyes = 10 tests with only 3 chart forms, so
+forms have to repeat. The schedule is made once per participant, the first time
+they are tested, and is fixed after that. It rotates through the forms, for example:
+
+| | prep1a | S2 prep | 2-weeks S2 | 4-weeks S2 | 8-weeks S2 |
+|---|---|---|---|---|---|
+| Amblyopic eye | 1 | 2 | 3 | 1 | 2 |
+| Fellow eye | 2 | 3 | 1 | 2 | 3 |
+
+This gives the fewest repeats possible:
+- the two eyes never get the same form at a visit;
+- neither eye gets the same form at two visits in a row;
+- each eye has each form at most twice, and a repeat always comes 3 visits
+  later, which is as far apart as 5 visits allow;
+- back-to-back visits share only one form, the fewest possible.
+
+There are 12 versions of this pattern: the 3 forms can be relabelled 6 ways,
+times 2 ways of shifting the fellow eye. New participants get these in random
+order, in blocks of 12, so every 12 participants use each version once. Across
+participants, every form then appears equally often at every visit and eye.
+
+The schedules are saved in `form_assignments.csv` in the data folder.
+**Use the same data folder for the whole study.** A participant first tested
+with a different data folder (or on another computer) would get a second
+schedule. The visit names come from `study.json` in the app folder.
 
 ### Grade the letters
 
@@ -127,10 +165,10 @@ After the test ends, check the marks, type any notes (e.g. "squinting",
 saved straight away, and you go on to the fellow eye. After the second eye, a
 summary of both eyes is shown; click **Next participant** to start again.
 
-If that eye is already saved for this subject and session (for example, you are
+If that eye is already saved for this subject and visit (for example, you are
 re-testing), the app asks before replacing it. Only that eye's data is replaced,
 and the new row is marked `retest = yes` in the summary file.
-If the app was closed between eyes, enter the same subject and session again and
+If the app was closed between eyes, enter the same subject and visit again and
 it will offer to skip straight to the fellow eye.
 
 ---
@@ -142,20 +180,22 @@ The default data folder is **Documents → ETDRS data**. To save somewhere else
 "Data folder" on the setup screen. The app remembers the folder you chose and
 uses it every time until you choose a different one.
 
-Each subject + session gets two files, which open in Excel, Numbers, R, SPSS, etc.:
+Each subject + visit gets two files, which open in Excel, Numbers, R, SPSS, etc.
+Spaces in the visit name become `_` in the file name, e.g. `P07_sessionS2_prep_summary.csv`.
 
 ### `<subject>_session<session>_summary.csv` — one row per eye
 
 | Column | Meaning |
 |---|---|
 | subject_id | Subject ID as typed |
-| session | Visit / session as typed |
+| session | The visit, e.g. `S2 prep` |
 | eye_tested | L or R |
 | amblyopic_eye | L or R |
 | eye_role | amblyopic or fellow |
 | test_order | 1 (amblyopic eye) or 2 (fellow eye) |
-| retest | `yes` if this test replaced an earlier saved test of the same eye in this session, otherwise `no` (blank in files saved before version 1.1.0) |
+| retest | `yes` if this test replaced an earlier saved test of the same eye at this visit, otherwise `no` (blank in files saved before version 1.1.0) |
 | form | Chart form used: 1, 2 or 3 |
+| scheduled_form | Form the counterbalancing schedule gave this visit and eye. If it differs from `form`, the RA went off-schedule (blank in files saved before version 1.2.0) |
 | letters_correct | Number of letters read correctly (0–70) |
 | letters_total | Always 70 |
 | logmar | 1.1 − 0.02 × letters_correct, 2 decimals |
@@ -177,8 +217,22 @@ Each subject + session gets two files, which open in Excel, Numbers, R, SPSS, et
 | letter | The chart letter |
 | result | `correct`, `incorrect` or `not_read` |
 
+### `form_assignments.csv` — the form schedule, one row per participant, visit and eye
+
+| Column | Meaning |
+|---|---|
+| subject_id | Subject ID as first typed |
+| schedule_id | Which of the 12 versions, e.g. `231+1` = amblyopic eye rotates 2→3→1, fellow eye one step ahead |
+| visit_number, visit | 1–5 and the visit name |
+| eye_role | `amblyopic` or `fellow` |
+| form | Scheduled form |
+| assigned_at, ra_initials, app_version | When the schedule was made, by whom, and with which app version |
+
+Don't edit this file by hand. If a schedule really must be redone, delete that
+participant's rows **before** their first test (keep a backup copy).
+
 Characters other than letters, numbers, `-`, `_` and `.` in the subject ID or
-session are replaced with `_` in the **file name** only (the ID inside the file
+visit are replaced with `_` in the **file name** only (the ID inside the file
 is kept as typed).
 
 ---
@@ -199,7 +253,9 @@ folder, so nothing is lost.
 - `etdrs_core.py` — scoring, stop rule (`STOP_RULE_ERRORS = 3`), form-reuse check,
   CSV reading/writing. No GUI code.
 - `charts.json` — the letters of the three forms (verified against the physical charts).
-- `test_etdrs_core.py` — unit tests: `python3 -m unittest`
+- `etdrs_schedule.py` — counterbalanced form schedules and `form_assignments.csv`.
+- `study.json` — the visit names, in order. The schedule is built from this list.
+- `test_etdrs_core.py`, `test_etdrs_schedule.py` — unit tests: `python3 -m unittest`
 - `docs/chart_photos/` — photos of the physical charts.
 - `assets/` — the app icon (`ETDRSLogger.icns` for the Mac app, `icon_256.png` for the window).
 - `Make ETDRS Logger App.command` — builds `~/Applications/ETDRS Logger.app`, a small
