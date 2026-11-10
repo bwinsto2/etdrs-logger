@@ -19,9 +19,11 @@ except ImportError:  # pragma: no cover - depends on the Python install
              "(it includes tkinter) and try again.")
 
 import etdrs_core as core
+import etdrs_schedule as sched
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHARTS_PATH = os.path.join(HERE, "charts.json")
+STUDY_PATH = os.path.join(HERE, "study.json")
 ICON_PATH = os.path.join(HERE, "assets", "icon_256.png")
 
 FAMILY = "Helvetica"
@@ -71,6 +73,7 @@ class App(tk.Tk):
         self.option_add("*TCombobox*Listbox.font", FONT)
 
         self.charts = core.load_charts(CHARTS_PATH)
+        self.visits = sched.load_visits(STUDY_PATH)
         self.config_data = core.load_config()
         self.screen: tk.Frame | None = None
         self.chart_screen: ChartScreen | None = None
@@ -82,6 +85,7 @@ class App(tk.Tk):
         self.ra_initials = ""
         self.data_folder = self.config_data.get("data_folder", core.DEFAULT_DATA_FOLDER)
         self.forms_used: dict[str, str] = {}
+        self.assignment: dict | None = None  # this participant's form schedule
 
         self.bind("<KeyPress>", self.on_key)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -113,6 +117,12 @@ class App(tk.Tk):
     def show_summary(self) -> None:
         self.show(SummaryScreen(self))
 
+    def role(self, eye: str) -> str:
+        return "amblyopic" if eye == self.amblyopic_eye else "fellow"
+
+    def scheduled_form(self, eye: str) -> str | None:
+        return sched.scheduled_form(self.assignment, self.session, self.role(eye))
+
     def start_session(self, subject_id, session, amblyopic_eye, ra_initials, folder):
         self.subject_id, self.session = subject_id, session
         self.amblyopic_eye, self.ra_initials = amblyopic_eye, ra_initials
@@ -121,13 +131,30 @@ class App(tk.Tk):
         self.config_data["data_folder"] = folder
         core.save_config(self.config_data)
 
+        self.assignment = sched.get_assignment(folder, subject_id)
+        if self.assignment is None:
+            if not messagebox.askyesno(
+                    "New participant?",
+                    f"Subject {subject_id} has no form schedule in this data folder yet.\n\n"
+                    f"Yes = this is a new participant: create their counterbalanced "
+                    f"form schedule for all {len(self.visits)} visits.\n\n"
+                    f"No = go back. If they are not new, check the Subject ID spelling "
+                    f"and the data folder."):
+                return
+            try:
+                self.assignment = sched.assign_schedule(
+                    folder, subject_id, self.visits, self.charts.form_numbers(), ra_initials)
+            except OSError as e:
+                messagebox.showerror("Could not save the form schedule", str(e))
+                return
+
         saved = core.saved_eyes(folder, subject_id, session)
         start_order = 0
         if saved:
             others = {r.get("amblyopic_eye") for r in saved.values()} - {amblyopic_eye}
             if others and not messagebox.askyesno(
                     "Check amblyopic eye",
-                    f"Data already saved for subject {subject_id}, session {session} "
+                    f"Data already saved for subject {subject_id}, visit {session} "
                     f"says the amblyopic eye is {others.pop()}, but you entered "
                     f"{amblyopic_eye}.\n\nContinue anyway?", icon="warning"):
                 return
@@ -137,15 +164,15 @@ class App(tk.Tk):
                 if messagebox.askyesno(
                         "Amblyopic eye already saved",
                         f"The amblyopic eye ({core.EYE_NAMES[amb]}) is already saved "
-                        f"for this session (form {form}).\n\n"
+                        f"for this visit (form {form}).\n\n"
                         f"Yes = go on to the fellow eye.\n"
                         f"No = test the amblyopic eye again."):
                     start_order = 1
             elif amb in saved and fel in saved:
                 if not messagebox.askyesno(
-                        "Session already saved",
+                        "Visit already saved",
                         f"Both eyes are already saved for subject {subject_id}, "
-                        f"session {session}.\n\nTest again? You will be asked "
+                        f"visit {session}.\n\nTest again? You will be asked "
                         f"before anything is overwritten.", icon="warning"):
                     return
         self.show_form_select(start_order)
@@ -190,8 +217,9 @@ class SetupScreen(tk.Frame):
         row(0, "Subject ID")
         first = tk.Entry(form, textvariable=self.subject, font=FONT, width=20)
         first.grid(row=0, column=1, sticky="w")
-        row(1, "Visit / session")
-        tk.Entry(form, textvariable=self.session, font=FONT, width=10).grid(row=1, column=1, sticky="w")
+        row(1, "Visit")
+        ttk.Combobox(form, textvariable=self.session, values=app.visits, state="readonly",
+                     font=FONT, width=14).grid(row=1, column=1, sticky="w")
         row(2, "Amblyopic eye")
         ttk.Combobox(form, textvariable=self.eye, values=list(core.EYES), state="readonly",
                      font=FONT, width=5).grid(row=2, column=1, sticky="w")
@@ -223,7 +251,7 @@ class SetupScreen(tk.Frame):
         subject, session = self.subject.get().strip(), self.session.get().strip()
         eye, ra = self.eye.get().strip(), self.ra.get().strip().upper()
         folder = self.folder.get().strip()
-        missing = [name for name, value in (("Subject ID", subject), ("Visit / session", session),
+        missing = [name for name, value in (("Subject ID", subject), ("Visit", session),
                                             ("Amblyopic eye", eye), ("RA initials", ra),
                                             ("Data folder", folder)) if not value]
         if missing:
@@ -246,7 +274,7 @@ def eye_header(parent, app: App, eye: str) -> tk.Frame:
     bar = tk.Frame(parent, bg=ROLE_COLORS[role], padx=20, pady=10)
     tk.Label(bar, text=eye_label(eye, app.amblyopic_eye), font=FONT_TITLE,
              bg=ROLE_COLORS[role], fg="white").pack(side="left")
-    tk.Label(bar, text=f"Subject {app.subject_id}   ·   Session {app.session}   ·   RA {app.ra_initials}",
+    tk.Label(bar, text=f"Subject {app.subject_id}   ·   Visit {app.session}   ·   RA {app.ra_initials}",
              font=FONT, bg=ROLE_COLORS[role], fg="white").pack(side="right")
     return bar
 
@@ -258,21 +286,38 @@ class FormScreen(tk.Frame):
         self.eye = app.eye_order[order]
         eye_header(self, app, self.eye).pack(fill="x")
 
+        self.scheduled = app.scheduled_form(self.eye)
+        if app.assignment:
+            ScheduleTable(self, app).pack(side="right", fill="y", padx=(0, 30), pady=30)
         body = tk.Frame(self, bg=BG, padx=40, pady=30)
         body.pack(fill="both", expand=True)
         step = "Eye 1 of 2" if order == 0 else "Eye 2 of 2"
         tk.Label(body, text=f"{step}: choose the chart form", font=FONT_BIG, bg=BG).pack(anchor="w")
         tk.Label(body, text="Match the first line to the physical chart. "
                  "Each eye must use a different form.",
-                 font=FONT, bg=BG, fg="#555").pack(anchor="w", pady=(4, 20))
+                 font=FONT, bg=BG, fg="#555").pack(anchor="w", pady=(4, 12))
 
         self.blocked = core.blocked_forms(self.eye, app.data_folder, app.subject_id,
                                           app.session, app.forms_used)
+        role_color = ROLE_COLORS[app.role(self.eye)]
+        if self.scheduled is None:
+            note, color = "No scheduled form for this visit: choose any form.", "#ef6c00"
+        elif self.scheduled in self.blocked:
+            note = (f"Scheduled form {self.scheduled} was already used for the other eye. "
+                    f"Choose another form (it will be recorded as off-schedule).")
+            color = "#ef6c00"
+        else:
+            note, color = f"Scheduled for this visit:  Form {self.scheduled}", role_color
+        tk.Label(body, text=note, font=FONT_BIG, bg=color, fg="white", padx=12, pady=6,
+                 wraplength=700, justify="left").pack(anchor="w", pady=(0, 12))
+
         for form in app.charts.form_numbers():
             first_line = " ".join(app.charts.forms[form][0])
             text = f"Form {form}   —   {first_line}"
             if form in self.blocked:
                 text += f"\n(already used for {core.EYE_NAMES[self.blocked[form]]} eye)"
+            elif form == self.scheduled:
+                text += "\n★ scheduled"
             tk.Button(body, text=text, font=(FAMILY, 30, "bold"), width=26, pady=12,
                       state="disabled" if form in self.blocked else "normal",
                       command=lambda f=form: self.choose(f)).pack(anchor="w", pady=8)
@@ -287,6 +332,13 @@ class FormScreen(tk.Frame):
         except core.FormAlreadyUsedError as e:
             messagebox.showerror("Form already used", str(e))
             return
+        if (self.scheduled and form != self.scheduled and self.scheduled not in self.blocked
+                and not messagebox.askyesno(
+                    "Not the scheduled form",
+                    f"The schedule says Form {self.scheduled} for this visit and eye.\n\n"
+                    f"Use Form {form} instead? This will be recorded in the data.",
+                    icon="warning")):
+            return
         self.app.show_chart(self.order, form)
 
     def back(self) -> None:
@@ -299,6 +351,30 @@ class FormScreen(tk.Frame):
     def keep(self):
         return {"subject": self.app.subject_id, "session": self.app.session,
                 "eye": self.app.amblyopic_eye, "ra": self.app.ra_initials}
+
+
+class ScheduleTable(tk.Frame):
+    """This participant's form for every visit and eye; the current visit in bold."""
+
+    def __init__(self, parent, app: App):
+        super().__init__(parent, bg="#f5f5f5", padx=16, pady=12)
+        tk.Label(self, text="Form schedule", font=FONT_BOLD, bg="#f5f5f5").grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        for col, text in enumerate(["Visit", "AE", "FE"]):
+            tk.Label(self, text=text, font=FONT_SMALL, bg="#f5f5f5", fg="#555", padx=6).grid(
+                row=1, column=col, sticky="w")
+        visits = list(app.visits)
+        visits += sorted({v for v, _ in app.assignment["forms"]} - set(visits))
+        for r, visit in enumerate(visits, start=2):
+            current = visit == app.session
+            font = (FAMILY, 16, "bold") if current else (FAMILY, 16)
+            bg = "#fff3b0" if current else "#f5f5f5"
+            cells = [("▶ " if current else "   ") + visit,
+                     sched.scheduled_form(app.assignment, visit, "amblyopic") or "–",
+                     sched.scheduled_form(app.assignment, visit, "fellow") or "–"]
+            for col, text in enumerate(cells):
+                tk.Label(self, text=text, font=font, bg=bg, padx=6, pady=2,
+                         anchor="w" if col == 0 else "center").grid(row=r, column=col, sticky="we")
 
 
 class ChartScreen(tk.Frame):
@@ -520,7 +596,8 @@ class ChartScreen(tk.Frame):
             subject_id=app.subject_id, session=app.session, eye_tested=self.eye,
             amblyopic_eye=app.amblyopic_eye, test_order=self.order + 1, form=self.form,
             test=self.test, line_logmar=app.charts.line_logmar,
-            ra_initials=app.ra_initials, notes=self.notes.get("1.0", "end").strip())
+            ra_initials=app.ra_initials, notes=self.notes.get("1.0", "end").strip(),
+            scheduled_form=app.scheduled_form(self.eye) or "")
         try:
             try:
                 core.save_eye_result(app.data_folder, result)
@@ -528,7 +605,7 @@ class ChartScreen(tk.Frame):
                 if not messagebox.askyesno(
                         "Overwrite?",
                         f"The {core.EYE_NAMES[self.eye]} eye is already saved for subject "
-                        f"{app.subject_id}, session {app.session}.\n\n"
+                        f"{app.subject_id}, visit {app.session}.\n\n"
                         f"Replace the saved {core.EYE_NAMES[self.eye]} eye data with this test?\n"
                         f"(The other eye's data is kept.)", icon="warning", parent=self):
                     return
@@ -553,8 +630,8 @@ class SummaryScreen(tk.Frame):
     def __init__(self, app: App):
         super().__init__(app, bg=BG, padx=40, pady=30)
         self.app = app
-        tk.Label(self, text="Session complete", font=FONT_TITLE, bg=BG).pack(anchor="w")
-        tk.Label(self, text=f"Subject {app.subject_id}   ·   Session {app.session}   ·   "
+        tk.Label(self, text="Visit complete", font=FONT_TITLE, bg=BG).pack(anchor="w")
+        tk.Label(self, text=f"Subject {app.subject_id}   ·   Visit {app.session}   ·   "
                  f"Amblyopic eye {app.amblyopic_eye}   ·   RA {app.ra_initials}",
                  font=FONT, bg=BG).pack(anchor="w", pady=(4, 20))
 

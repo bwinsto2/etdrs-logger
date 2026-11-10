@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 # Standard ETDRS stop rule: stop once a completed line has this many errors.
 STOP_RULE_ERRORS = 3
@@ -41,7 +41,7 @@ RESULT_NOT_READ = "not_read"
 
 SUMMARY_COLUMNS = [
     "subject_id", "session", "eye_tested", "amblyopic_eye", "eye_role",
-    "test_order", "retest", "form", "letters_correct", "letters_total", "logmar",
+    "test_order", "retest", "form", "scheduled_form", "letters_correct", "letters_total", "logmar",
     "stopped_at_line", "stop_reason", "ra_initials", "notes", "timestamp",
     "app_version",
 ]
@@ -241,6 +241,7 @@ class EyeResult:
     notes: str = ""
     timestamp: str = ""
     retest: bool = False  # set on save: True if it replaced an earlier test of this eye
+    scheduled_form: str = ""  # form the counterbalancing schedule gave this visit+eye
 
     @property
     def eye_role(self) -> str:
@@ -258,6 +259,7 @@ class EyeResult:
             "test_order": str(self.test_order),
             "retest": "yes" if self.retest else "no",
             "form": self.form,
+            "scheduled_form": self.scheduled_form,
             "letters_correct": str(t.letters_correct),
             "letters_total": str(TOTAL_LETTERS),
             "logmar": format_logmar(t.logmar),
@@ -317,7 +319,7 @@ def read_rows(path: str) -> List[Dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def _write_rows(path: str, columns: List[str], rows: List[Dict[str, str]]) -> None:
+def write_rows(path: str, columns: List[str], rows: List[Dict[str, str]]) -> None:
     """Write the whole file to a temp file, then swap it in, so a crash
     mid-write never leaves a half-written CSV."""
     folder = os.path.dirname(path) or "."
@@ -376,7 +378,7 @@ def check_form_allowed(form: str, eye: str, folder: str, subject_id: str,
     if form in blocked:
         raise FormAlreadyUsedError(
             f"Form {form} was already used for the {EYE_NAMES[blocked[form]]} eye "
-            f"in this session. Each eye must be tested with a different form.")
+            f"at this visit. Each eye must be tested with a different form.")
 
 
 def save_eye_result(folder: str, result: EyeResult, overwrite: bool = False) -> Dict[str, str]:
@@ -396,7 +398,7 @@ def save_eye_result(folder: str, result: EyeResult, overwrite: bool = False) -> 
     if already and not overwrite:
         raise EyeAlreadySavedError(
             f"{EYE_NAMES[eye]} eye is already saved for subject "
-            f"{result.subject_id}, session {result.session}.")
+            f"{result.subject_id}, visit {result.session}.")
 
     check_form_allowed(result.form, eye, folder, result.subject_id, result.session)
 
@@ -412,8 +414,8 @@ def save_eye_result(folder: str, result: EyeResult, overwrite: bool = False) -> 
                  if r.get("eye_tested") in eye_order else len(eye_order))
 
     os.makedirs(folder, exist_ok=True)
-    _write_rows(paths["summary"], SUMMARY_COLUMNS, summary)
-    _write_rows(paths["letters"], LETTER_COLUMNS, letters)
+    write_rows(paths["summary"], SUMMARY_COLUMNS, summary)
+    write_rows(paths["letters"], LETTER_COLUMNS, letters)
     return paths
 
 

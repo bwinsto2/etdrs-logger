@@ -1,0 +1,4 @@
+{
+  "_comment": "Study visits in order. Each visit tests the amblyopic eye (AE) then the fellow eye (FE). The form schedule for each participant is built from this list the first time they are tested. The names also appear in the CSV file names.",
+  "visits": ["prep1a", "S2 prep", "2-weeks S2", "4-weeks S2", "8-weeks S2"]
+}

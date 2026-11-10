@@ -90,8 +90,22 @@ eye" rule, so it still works if the app was restarted between eyes.
   output, overwrite/append behavior, same-form rejection.
 - Simple, uncluttered UI with large text: the RA is operating it in real time.
 
-## Future (not now)
+## Form counterbalancing (added in 1.2.0)
 
-Counterbalancing which forms a participant gets across repeated visits and both
-eyes. Keep the data format so that a later feature can read past CSVs to see
-which forms a subject has already had.
+- Visits are fixed and listed in `study.json`: prep1a, S2 prep, 2-weeks S2,
+  4-weeks S2, 8-weeks S2. The setup screen's Visit field is a dropdown of these.
+- The first time a Subject ID is used with a data folder, the app confirms it is
+  a new participant and assigns a schedule giving the form for each visit and eye
+  (AE/FE). The schedule is saved in `form_assignments.csv` in the data folder
+  and never changes after that.
+- Schedules rotate through the forms (AE: A B C A B; FE one step ahead or
+  behind: B C A B C or C A B C A), which minimises repeats:
+  - the eyes differ within a visit
+  - no eye gets the same form at consecutive visits
+  - each eye's forms are used 2/2/1 times, and repeats are 3 visits apart
+  - consecutive visits share only one form
+- The 12 schedules (6 form labellings × 2 FE offsets) are given out by blocked
+  randomisation (random order, each once per block of 12), which balances
+  forms across visits and eyes over participants.
+- The form screen shows and marks the scheduled form. Choosing another form
+  needs confirmation. The summary CSV records `scheduled_form` next to `form`.
